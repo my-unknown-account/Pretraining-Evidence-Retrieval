@@ -1,0 +1,9 @@
+matplotlib
+numpy
+openai
+openpyxl
+requests
+torch
+tqdm
+transformers
+

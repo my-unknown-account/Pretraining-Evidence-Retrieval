@@ -1,0 +1,50 @@
+﻿# RQ1: Corrective Retrieval vs. Pretraining Evidence
+
+RQ1 measures when retrieval helps. The experiment focuses on facts the model gets wrong without context, then asks whether a correct retrieved passage repairs the answer.
+
+Filter:
+
+```text
+y_CB != o
+```
+
+Metric:
+
+```text
+RCR = P(y_positive = o | y_CB != o)
+```
+
+The key question is whether low-RAS facts benefit more from corrective retrieval than high-RAS facts. If a model already has strong relation-aware pretraining evidence, retrieval should have less room to help.
+
+## Paper Result
+
+Correct retrieval repaired a large share of initially wrong answers:
+
+- Amber: `RCR = 0.749`
+- OLMo: `RCR = 0.888`
+- RedPajama: `RCR = 0.818`
+
+Across RAS bins, correction rates were lower in the highest-support group than
+in the lowest-support group by 4.5 percentage points for Amber, 8.5 for OLMo,
+and 9.9 for RedPajama.
+
+## Run
+
+```powershell
+python scripts\analysis\analyze_rq1.py
+```
+
+## Inputs
+
+- `data/dataset.json`
+- `scripts/inference/closed_book/results/run_*_{model}_simple.json`
+- `scripts/inference/correct_context/results/run_*_{model}_simple.json`
+
+## Outputs
+
+Written to `scripts/analysis/outputs/rq1/`:
+
+- `rq1_examples.csv`: filtered example-level rows.
+- `rq1_bins.csv`: RAS-bin correction rates.
+- `rq1_summary.md`: model-level rates and trend diagnostics.
+- `figure2_correction_rate_vs_ras.pdf`: correction-rate plot.

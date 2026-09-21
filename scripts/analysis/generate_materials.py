@@ -5,7 +5,7 @@ Outputs are written to scripts/analysis/materials:
   - Figure 2. Counterfactual-passage prompts.
   - Figure 3. Judging prompts.
   - Figure 4. Correction Rate vs RAS.
-  - Figure 5. Override Rate vs RAS.
+  - Figure 5. Corruption Rate vs RAS.
   - Table 1. Dataset/relation statistics.
   - Table 2. Models, corpora, evaluation sizes.
   - Table 3. RQ3 signal comparison.
@@ -32,7 +32,7 @@ RQ1_DIR = REPO_ROOT / "scripts" / "analysis" / "outputs" / "rq1"
 RQ2_DIR = REPO_ROOT / "scripts" / "analysis" / "outputs" / "rq2"
 RQ3_DIR = REPO_ROOT / "scripts" / "analysis" / "outputs" / "rq3"
 RQ4_DIR = REPO_ROOT / "scripts" / "analysis" / "outputs" / "rq4"
-FIGURE1 = REPO_ROOT / "paper" / "figure1_conceptual framework.pdf"
+FIGURE1 = REPO_ROOT / "paper" / "figure1_conceptual_framework.pdf"
 RQ1_FIGURE = RQ1_DIR / "figure2_correction_rate_vs_ras.pdf"
 RQ2_FIGURE = RQ2_DIR / "figure3_override_rate_vs_ras.pdf"
 
@@ -230,7 +230,7 @@ def clean_stale_materials(output_dir: Path) -> None:
 
 def copy_figures(output_dir: Path) -> None:
     figures = [
-        (FIGURE1, output_dir / "figure1_conceptual framework.pdf"),
+        (FIGURE1, output_dir / "figure1_conceptual_framework.pdf"),
         (RQ1_FIGURE, output_dir / "figure4_correction_rate_vs_ras.pdf"),
         (RQ2_FIGURE, output_dir / "figure5_override_rate_vs_ras.pdf"),
     ]
@@ -520,7 +520,7 @@ def write_combined(output_dir: Path) -> None:
         "",
         "## Figure 1. Conceptual framework",
         "",
-        "File: `figure1_conceptual framework.pdf`",
+        "File: `figure1_conceptual_framework.pdf`",
         "",
         (output_dir / "figure2_prompt_counterfactual_passages.md").read_text(
             encoding="utf-8"
@@ -532,7 +532,7 @@ def write_combined(output_dir: Path) -> None:
         "",
         "File: `figure4_correction_rate_vs_ras.pdf`",
         "",
-        "## Figure 5. Override Rate vs RAS",
+        "## Figure 5. Corruption Rate vs RAS",
         "",
         "File: `figure5_override_rate_vs_ras.pdf`",
         "",

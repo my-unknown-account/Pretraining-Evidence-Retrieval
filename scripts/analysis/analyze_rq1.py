@@ -326,7 +326,7 @@ def write_figure(path: Path, binned_rows: list[dict]) -> None:
 
     ax.set_title("(a) Correction across RAS quantiles")
     ax.set_xlabel("log10(RAS + 1)")
-    ax.set_ylabel("Retrieval Correction Rate")
+    ax.set_ylabel("Rate of Correction (RCR)")
     ax.set_ylim(0.6, 1.0)
     ax.set_xlim(0, max_log_ras * 1.03)
     ax.grid(True)

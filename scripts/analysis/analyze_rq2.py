@@ -369,15 +369,15 @@ def write_figure(path: Path, binned_rows: list[dict]) -> None:
         resistance,
         override,
         other,
-        labels=["Resistance", "Override", "Other"],
+        labels=["Resistance", "Corruption", "Other"],
         colors=["#009E73", "#D55E00", "#C9C9C9"],
         alpha=0.85,
     )
     ax_split.plot(bin_ids, override, marker="o", color="black", linewidth=1.8)
 
-    ax_override.set_title("(a) Override rate")
+    ax_override.set_title("(a) Corruption across RAS quantiles")
     ax_override.set_xlabel("log10(RAS + 1)")
-    ax_override.set_ylabel("Override Rate")
+    ax_override.set_ylabel("Rate of Corruption (RCP)")
     ax_override.set_ylim(0.4, 1.0)
     ax_override.set_xlim(0, max_log_ras * 1.03)
     ax_override.grid(True)

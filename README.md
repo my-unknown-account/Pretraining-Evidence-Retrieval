@@ -1,11 +1,9 @@
 <div align="center">
 
-# Easy to Correct, Easy to Corrupt?
-
-### How Pretraining Evidence Relates to LLM Reliance on Retrieved Context
+# How Pretraining Evidence Relates to LLM Reliance on External Context
 
 🧠 Code, data, prompts, analyses, and human-evaluation materials for studying when
-retrieval fixes factual errors and when it overrides facts a model already knew.
+retrieval fixes factual errors and when it corrupts facts a model already knew.
 
 </div>
 
@@ -26,7 +24,7 @@ answers. This project treats retrieval as a two-sided intervention:
 | --- | --- | --- | --- |
 | 🧠 Closed book | What does the model answer from memory? | Correct factual recall | Wrong or unsupported answer |
 | ✅ Correct context | Does true evidence repair an error? | Correction | The model ignores evidence |
-| ⚠️ Contradictory context | Does false evidence override knowledge? | Resistance | The model adopts the false object |
+| ⚠️ Contradictory context | Does false evidence corrupt knowledge? | Resistance | The model adopts the false object |
 
 The core claim is not simply that retrieval helps or hurts. It is that the same
 facts that are easiest to repair can also be the easiest to destabilize.
@@ -38,7 +36,7 @@ facts that are easiest to repair can also be the easiest to destabilize.
 | RQ1 | 🛠️ Corrective retrieval vs. pretraining evidence | `scripts/analysis/analyze_rq1.py` |
 | RQ2 | ⚠️ Contradictory retrieval vs. pretraining evidence | `scripts/analysis/analyze_rq2.py` |
 | RQ3 | 📊 Semantic vs. lexical evidence signals | `scripts/analysis/analyze_rq3.py` |
-| RQ4 | 📈 OLMo vs. OLMo-32B scale comparison | `scripts/analysis/analyze_rq4.py` |
+| RQ4 | 📈 OLMo-3-7B vs. OLMo-3-32B scale comparison | `scripts/analysis/analyze_rq4.py` |
 
 ## 📡 Evidence Signals
 
@@ -62,20 +60,20 @@ only when it clearly states or implies the complete factual proposition.
 
 | Finding | Result |
 | --- | --- |
-| ✅ Correct retrieval repairs many errors | RCR: Amber `0.749`, OLMo `0.888`, RedPajama `0.818` |
-| ⚠️ Contradictory retrieval often overrides correct answers | ROR: Amber `0.522`, OLMo `0.749`, RedPajama `0.603` |
-| 🛡️ Stronger RAS reduces override risk | Highest-RAS facts are less likely to adopt the planted false object |
-| 📊 No single signal dominates all outcomes | RAS and confidence signals provide complementary predictive signal |
-| 📈 Larger OLMo is more resistant | OLMo-32B lowers ROR from `0.749` to `0.621` with shared corpus evidence |
+| ✅ Correct retrieval repairs many errors | RCR: Amber `0.773`, OLMo `0.889`, RedPajama `0.844` |
+| ⚠️ Contradictory retrieval often corrupts correct answers | Rcp: Amber `0.524`, OLMo `0.744`, RedPajama `0.614` |
+| 🛡️ Stronger RAS reduces corruption risk | Highest-RAS facts are less likely to adopt the planted false object |
+| 📊 No single signal fully determines outcomes | RAS and confidence signals provide complementary predictive signal |
+| 📈 Larger OLMo is more resistant | OLMo-3-32B lowers Rcp from `0.744` to `0.620` with shared corpus evidence |
 
 ## 🧪 Experimental Scale
 
 | Model | Facts | Closed-book QA records | RQ1 eligible wrong | RQ2 eligible correct |
 | --- | ---: | ---: | ---: | ---: |
-| Amber | 12,739 | 12,846 | 11,077 | 1,662 |
-| RedPajama | 12,309 | 12,516 | 9,942 | 2,367 |
-| OLMo | 12,788 | 12,934 | 11,255 | 1,533 |
-| OLMo-32B | 12,788 | 12,934 | 9,773 | 3,015 |
+| AmberChat-7B | 12,739 | 12,846 | 11,077 | 1,662 |
+| RedPajama-7B | 12,309 | 12,516 | 9,942 | 2,367 |
+| OLMo-3-7B | 12,788 | 12,934 | 11,255 | 1,533 |
+| OLMo-3-32B | 12,788 | 12,934 | 9,773 | 3,015 |
 
 Each fact is evaluated across 10 stochastic generation runs per model and
 condition, then collapsed to one majority-selected QA record before analysis.
@@ -213,7 +211,7 @@ The repository includes filled workbooks for two validation steps:
 | Evaluation | Purpose | Agreement summary |
 | --- | --- | --- |
 | 📌 RAS support labels | Validates semantic support labeling for `RAS` | Individual agreement: `81.33`-`85.33`; majority vs. gold: `89.00` |
-| ⚠️ RQ2 override labels | Validates the three-way contradictory-context judge | Overall agreement: `94.56` |
+| ⚠️ RQ2 corruption labels | Validates the three-way contradictory-context judge | Overall agreement: `94.56` |
 
 Run:
 
@@ -228,4 +226,4 @@ The evidence scores in this repository measure observable support in
 model-associated corpora. They should not be read as causal proof that a
 specific passage produced a specific model behavior. The analyses are best
 understood as fact-level observational tests of when retrieval is likely to
-repair, override, or leave answers unchanged.
+repair, corrupt, or leave answers unchanged.

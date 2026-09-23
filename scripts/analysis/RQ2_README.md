@@ -11,25 +11,25 @@ y_CB = o
 Metric:
 
 ```text
-ROR = P(y_negative = o')
+Rcp = P(y_negative = o' | y_CB = o)
 ```
 
 Labels:
 
 - `TRUE_OBJECT`: resistance, `o -> o`
-- `FALSE_CONTEXT_OBJECT`: override, `o -> o'`
+- `FALSE_CONTEXT_OBJECT`: corruption, `o -> o'`
 - `OTHER`: other degradation, `o -> z`
 
 ## Paper Result
 
 Contradictory context frequently displaced initially correct answers:
 
-- Amber: `ROR = 0.522`
-- OLMo: `ROR = 0.749`
-- RedPajama: `ROR = 0.603`
+- Amber: `Rcp = 0.524`
+- OLMo: `Rcp = 0.744`
+- RedPajama: `Rcp = 0.614`
 
-Override rates dropped from the lowest-RAS group to the highest-RAS group by
-14.2 percentage points for Amber, 19.9 for OLMo, and 16.8 for RedPajama.
+Corruption rates dropped from the lowest-RAS group to the highest-RAS group by
+16.7 percentage points for Amber, 20.5 for OLMo, and 20.6 for RedPajama.
 
 ## Run
 
@@ -48,6 +48,6 @@ python scripts\analysis\analyze_rq2.py
 Written to `scripts/analysis/outputs/rq2/`:
 
 - `rq2_examples.csv`: filtered example-level rows.
-- `rq2_bins.csv`: RAS-bin resistance, override, and other rates.
+- `rq2_bins.csv`: RAS-bin resistance, corruption, and other rates.
 - `rq2_summary.md`: model-level rates and trend diagnostics.
 - `figure3_override_rate_vs_ras.pdf`: override-rate plot.

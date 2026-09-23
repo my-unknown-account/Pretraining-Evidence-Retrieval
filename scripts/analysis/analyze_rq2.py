@@ -25,6 +25,12 @@ DEFAULT_QA_RESULTS = REPO_ROOT / "scripts" / "inference" / "results.json"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "scripts" / "analysis" / "outputs" / "rq2"
 DEFAULT_MODELS = ("amber", "redpajama", "olmo")
 QUESTION_TYPE = "simple"
+MODEL_LABELS = {
+    "amber": "AmberChat-7B",
+    "redpajama": "RedPajama-7B",
+    "olmo": "OLMo-3-7B",
+    "olmo32": "OLMo-3-32B",
+}
 
 TRUE_OBJECT = "TRUE_OBJECT"
 FALSE_CONTEXT_OBJECT = "FALSE_CONTEXT_OBJECT"
@@ -43,7 +49,10 @@ def parse_args() -> argparse.Namespace:
         "--models",
         nargs="+",
         default=list(DEFAULT_MODELS),
-        help="Models to include. Default: amber redpajama olmo",
+        help=(
+            "Models to include. Default: amber redpajama olmo "
+            "(AmberChat-7B, RedPajama-7B, OLMo-3-7B)."
+        ),
     )
     parser.add_argument("--q-type", default=QUESTION_TYPE)
     parser.add_argument(
@@ -245,6 +254,8 @@ def write_summary(path: Path, rows: list[dict], binned_rows: list[dict]) -> None
     lines = [
         "# RQ2 Summary",
         "",
+        "Models: `amber` = AmberChat-7B; `redpajama` = RedPajama-7B; `olmo` = OLMo-3-7B.",
+        "",
         "Filter: closed-book answer is correct (`y_CB = o`).",
         "Outcome: contradictory-context answer adopts the false object (`ROR`).",
         "",
@@ -304,12 +315,7 @@ def write_figure(path: Path, binned_rows: list[dict]) -> None:
         "olmo": "#009E73",
         "olmo32": "#CC79A7",
     }
-    labels = {
-        "amber": "Amber",
-        "redpajama": "RedPajama",
-        "olmo": "OLMo",
-        "olmo32": "OLMo-32B",
-    }
+    labels = MODEL_LABELS
 
     fig, axes = plt.subplots(1, 2, figsize=(11.5, 3.01), sharex=False)
     ax_override, ax_split = axes

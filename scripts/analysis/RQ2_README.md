@@ -24,12 +24,13 @@ Labels:
 
 Contradictory context frequently displaced initially correct answers:
 
-- Amber: `Rcp = 0.524`
-- OLMo: `Rcp = 0.744`
-- RedPajama: `Rcp = 0.614`
+- AmberChat-7B: `Rcp = 0.524`
+- OLMo-3-7B: `Rcp = 0.744`
+- RedPajama-7B: `Rcp = 0.614`
 
 Corruption rates dropped from the lowest-RAS group to the highest-RAS group by
-16.7 percentage points for Amber, 20.5 for OLMo, and 20.6 for RedPajama.
+16.7 percentage points for AmberChat-7B, 20.5 for OLMo-3-7B, and 20.6 for
+RedPajama-7B.
 
 ## Run
 

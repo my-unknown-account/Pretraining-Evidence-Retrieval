@@ -60,11 +60,11 @@ only when it clearly states or implies the complete factual proposition.
 
 | Finding | Result |
 | --- | --- |
-| ✅ Correct retrieval repairs many errors | RCR: Amber `0.773`, OLMo `0.889`, RedPajama `0.844` |
-| ⚠️ Contradictory retrieval often corrupts correct answers | Rcp: Amber `0.524`, OLMo `0.744`, RedPajama `0.614` |
+| ✅ Correct retrieval repairs many errors | RCR: AmberChat-7B `0.773`, OLMo-3-7B `0.889`, RedPajama-7B `0.844` |
+| ⚠️ Contradictory retrieval often corrupts correct answers | Rcp: AmberChat-7B `0.524`, OLMo-3-7B `0.744`, RedPajama-7B `0.614` |
 | 🛡️ Stronger RAS reduces corruption risk | Highest-RAS facts are less likely to adopt the planted false object |
-| 📊 RAS is strongest overall | Macro AUROC: correction `0.607`, corruption `0.604` |
-| 📈 Larger OLMo is more resistant | OLMo-3-32B lowers Rcp from `0.744` to `0.620` with shared corpus evidence |
+| 📊 Evidence and confidence signals are modest predictors | RAS macro AUROC: correction `0.568`, override `0.582` |
+| 📈 Larger OLMo is more resistant | OLMo-3-32B lowers Rcp from `0.744` to `0.530` on shared facts |
 
 ## 🧪 Experimental Scale
 
@@ -73,7 +73,7 @@ only when it clearly states or implies the complete factual proposition.
 | AmberChat-7B | 12,739 | 12,846 | 11,077 | 1,662 |
 | RedPajama-7B | 12,309 | 12,516 | 9,942 | 2,367 |
 | OLMo-3-7B | 12,788 | 12,934 | 11,255 | 1,533 |
-| OLMo-3-32B | 12,788 | 12,934 | 9,773 | 3,015 |
+| OLMo-3-32B | 12,788 | 12,934 | 9,489 | 1,249 |
 
 Each fact is evaluated across 10 stochastic generation runs per model and
 condition, then collapsed to one majority-selected QA record before analysis.

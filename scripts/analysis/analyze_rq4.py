@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import importlib.util
 import json
 import math
 import subprocess
@@ -23,6 +24,7 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "scripts" / "analysis" / "outputs" / "rq4"
 RQ1_SCRIPT = REPO_ROOT / "scripts" / "analysis" / "analyze_rq1.py"
 RQ2_SCRIPT = REPO_ROOT / "scripts" / "analysis" / "analyze_rq2.py"
 MODELS = ("olmo", "olmo32")
+MODEL_NOTE = "Models: `olmo` = OLMo-3-7B; `olmo32` = OLMo-3-32B."
 SIGNALS = {
     "Lex-SO": ("lexical_so",),
     "Lex-SRO": ("lexical_sro",),
@@ -54,8 +56,145 @@ def run_analysis(script: Path, output_dir: Path, bins: int) -> None:
         "--bins",
         str(bins),
     ]
-    print("[run] " + " ".join(cmd))
+    print("[run] " + " ".join(cmd), flush=True)
     subprocess.run(cmd, cwd=REPO_ROOT, check=True)
+
+
+def load_module(path: Path, name: str):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def coerce_csv_value(value: str):
+    if value == "":
+        return value
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        return float(value)
+    except ValueError:
+        return value
+
+
+def read_csv_dicts(path: Path) -> list[dict]:
+    with path.open("r", newline="", encoding="utf-8") as f:
+        return [
+            {key: coerce_csv_value(value) for key, value in row.items()}
+            for row in csv.DictReader(f)
+        ]
+
+
+def shared_qids(rows: list[dict]) -> set[str]:
+    models_by_qid: dict[str, set[str]] = {}
+    for row in rows:
+        models_by_qid.setdefault(str(row["qid"]), set()).add(str(row["model"]))
+    required_models = set(MODELS)
+    return {
+        qid
+        for qid, models in models_by_qid.items()
+        if required_models.issubset(models)
+    }
+
+
+def filter_to_shared_model_facts(rows: list[dict]) -> list[dict]:
+    keep_qids = shared_qids(rows)
+    return [row for row in rows if str(row["qid"]) in keep_qids]
+
+
+def add_model_note_to_summary(path: Path) -> None:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if MODEL_NOTE in lines:
+        return
+    insert_at = 1 if lines else 0
+    lines[insert_at:insert_at] = ["", MODEL_NOTE]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def rewrite_shared_rq_outputs(
+    module,
+    output_dir: Path,
+    examples_name: str,
+    bins_name: str,
+    summary_name: str,
+    figure_name: str,
+    summary_json_name: str,
+    bins: int,
+    metric_label: str,
+) -> Path:
+    examples_path = output_dir / examples_name
+    rows = filter_to_shared_model_facts(read_csv_dicts(examples_path))
+    if not rows:
+        raise RuntimeError(
+            f"No RQ4 {metric_label} examples remain after requiring facts shared "
+            f"by {', '.join(MODELS)}."
+        )
+
+    shared_fact_count = len({row["qid"] for row in rows})
+    print(
+        f"[shared] {metric_label}: kept {len(rows)} rows over "
+        f"{shared_fact_count} facts shared by {', '.join(MODELS)}"
+    )
+
+    binned_rows = module.build_binned_rows(rows, bins)
+    module.write_csv(examples_path, rows)
+    module.write_csv(output_dir / bins_name, binned_rows)
+    summary_path = output_dir / summary_name
+    module.write_summary(summary_path, rows, binned_rows)
+    add_model_note_to_summary(summary_path)
+    module.write_figure(output_dir / figure_name, binned_rows)
+    (output_dir / summary_json_name).write_text(
+        json.dumps(
+            {
+                "models": list(MODELS),
+                "q_type": module.QUESTION_TYPE,
+                "filter": (
+                    "RQ4 shared-fact subset: qid retained only when it is present "
+                    "for every compared model after the RQ-specific closed-book filter."
+                ),
+                "n_shared_facts": shared_fact_count,
+                "n_examples": len(rows),
+                "summaries": module.model_summaries(rows),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return examples_path
+
+
+def rewrite_shared_outputs(output_dir: Path, bins: int) -> tuple[Path, Path]:
+    rq1_module = load_module(RQ1_SCRIPT, "rq1_analysis")
+    rq2_module = load_module(RQ2_SCRIPT, "rq2_analysis")
+    rq1_examples = rewrite_shared_rq_outputs(
+        rq1_module,
+        output_dir / "rq1",
+        "rq1_examples.csv",
+        "rq1_bins.csv",
+        "rq1_summary.md",
+        "figure2_correction_rate_vs_ras.pdf",
+        "rq1_summary.json",
+        bins,
+        "RQ1",
+    )
+    rq2_examples = rewrite_shared_rq_outputs(
+        rq2_module,
+        output_dir / "rq2",
+        "rq2_examples.csv",
+        "rq2_bins.csv",
+        "rq2_summary.md",
+        "figure3_override_rate_vs_ras.pdf",
+        "rq2_summary.json",
+        bins,
+        "RQ2",
+    )
+    return rq1_examples, rq2_examples
 
 
 def parse_float(value: str) -> float:
@@ -212,7 +351,7 @@ def write_table_md(path: Path, rows: list[dict], scope: str) -> None:
 
 def write_by_model_table_md(path: Path, rows: list[dict]) -> None:
     lines = [
-        "| Signal | OLMo Correction AUROC | OLMo-32B Correction AUROC | OLMo Corruption AUROC | OLMo-32B Corruption AUROC |",
+        "| Signal | OLMo-3-7B Correction AUROC | OLMo-3-32B Correction AUROC | OLMo-3-7B Corruption AUROC | OLMo-3-32B Corruption AUROC |",
         "| --- | ---: | ---: | ---: | ---: |",
     ]
     for signal in SIGNALS:
@@ -263,6 +402,10 @@ def write_rq3_outputs(output_dir: Path, rq1_examples: Path, rq2_examples: Path) 
                     "self_consistency",
                 ],
                 "metric": "direction-adjusted rank AUROC",
+                "filter": (
+                    "RQ4 shared-fact subset: qid retained only when it is present "
+                    "for every compared model after the RQ-specific closed-book filter."
+                ),
                 "section_5_4": "excluded",
                 "results": rows,
             },
@@ -300,10 +443,11 @@ def write_combined_summary(output_dir: Path) -> None:
     ).read_text(encoding="utf-8").strip()
 
     lines = [
-        "# RQ4: OLMo vs. OLMo32",
+        "# RQ4: OLMo-3-7B vs. OLMo-3-32B",
         "",
-        "Models: `olmo`, `olmo32`.",
+        MODEL_NOTE,
         "Analyses: RQ1, RQ2, and RQ3 only; Section 5.4 is excluded.",
+        "Filter: each RQ uses only facts shared by both models after the RQ-specific closed-book filter.",
         "",
         "## RQ1 Corrective Retrieval",
         "",
@@ -343,11 +487,8 @@ def main() -> None:
     rq2_dir = args.output_dir / "rq2"
     run_analysis(RQ1_SCRIPT, rq1_dir, args.bins)
     run_analysis(RQ2_SCRIPT, rq2_dir, args.bins)
-    write_rq3_outputs(
-        args.output_dir,
-        rq1_dir / "rq1_examples.csv",
-        rq2_dir / "rq2_examples.csv",
-    )
+    rq1_examples, rq2_examples = rewrite_shared_outputs(args.output_dir, args.bins)
+    write_rq3_outputs(args.output_dir, rq1_examples, rq2_examples)
     write_combined_summary(args.output_dir)
 
     print(f"[ok] wrote RQ4 summary to {args.output_dir / 'rq4_summary.md'}")

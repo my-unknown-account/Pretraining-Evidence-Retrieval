@@ -3,7 +3,7 @@
 This folder audits the automatic judge used for RQ2. RQ2 asks whether a model keeps the true answer or follows a contradictory retrieved passage.
 
 The paper uses this evaluation to validate the three-way contradictory-context
-judge that separates resistance, override, and unrelated degradation.
+judge that separates resistance, corruption, and unrelated degradation.
 
 ## Labels
 

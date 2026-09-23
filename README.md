@@ -63,7 +63,7 @@ only when it clearly states or implies the complete factual proposition.
 | ✅ Correct retrieval repairs many errors | RCR: Amber `0.773`, OLMo `0.889`, RedPajama `0.844` |
 | ⚠️ Contradictory retrieval often corrupts correct answers | Rcp: Amber `0.524`, OLMo `0.744`, RedPajama `0.614` |
 | 🛡️ Stronger RAS reduces corruption risk | Highest-RAS facts are less likely to adopt the planted false object |
-| 📊 No single signal fully determines outcomes | RAS and confidence signals provide complementary predictive signal |
+| 📊 RAS is strongest overall | Macro AUROC: correction `0.607`, corruption `0.604` |
 | 📈 Larger OLMo is more resistant | OLMo-3-32B lowers Rcp from `0.744` to `0.620` with shared corpus evidence |
 
 ## 🧪 Experimental Scale

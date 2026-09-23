@@ -1,6 +1,6 @@
 ﻿# RQ2: Contradictory Retrieval vs. Pretraining Evidence
 
-RQ2 measures when retrieval hurts. The experiment focuses on facts the model gets right without context, then asks whether a contradictory passage overrides the correct answer.
+RQ2 measures when retrieval hurts. The experiment focuses on facts the model gets right without context, then asks whether a contradictory passage corrupts the correct answer.
 
 Filter:
 
@@ -50,4 +50,4 @@ Written to `scripts/analysis/outputs/rq2/`:
 - `rq2_examples.csv`: filtered example-level rows.
 - `rq2_bins.csv`: RAS-bin resistance, corruption, and other rates.
 - `rq2_summary.md`: model-level rates and trend diagnostics.
-- `figure3_override_rate_vs_ras.pdf`: override-rate plot.
+- `figure3_override_rate_vs_ras.pdf`: corruption-rate plot.

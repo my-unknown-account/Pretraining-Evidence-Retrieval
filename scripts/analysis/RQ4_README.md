@@ -20,6 +20,15 @@ retrieval was not:
 The larger model was less likely to adopt the planted false object, even though
 both OLMo models share the same corpus-derived evidence measurements.
 
+Paper signal-discrimination values for Relation-Aware Support:
+
+| Signal | OLMo-3-7B correction | OLMo-3-32B correction | OLMo-3-7B corruption | OLMo-3-32B corruption |
+| --- | ---: | ---: | ---: | ---: |
+| RAS | 0.613 | 0.656 | 0.628 | 0.683 |
+
+The analysis script recomputes signal-discrimination values from the local
+example files. The table above records the values reported in the paper.
+
 ## Run
 
 ```powershell

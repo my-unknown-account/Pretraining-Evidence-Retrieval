@@ -210,6 +210,29 @@ def write_table_md(path: Path, rows: list[dict], scope: str) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def write_by_model_table_md(path: Path, rows: list[dict]) -> None:
+    lines = [
+        "| Signal | OLMo Correction AUROC | OLMo-32B Correction AUROC | OLMo Corruption AUROC | OLMo-32B Corruption AUROC |",
+        "| --- | ---: | ---: | ---: | ---: |",
+    ]
+    for signal in SIGNALS:
+        by_key = {
+            (row["scope"], row["outcome"]): row
+            for row in rows
+            if row["signal"] == signal and row["scope"] in MODELS
+        }
+        name = f"**{signal}**" if signal == "Relation-Aware Support" else signal
+        lines.append(
+            f"| {name} | "
+            f"{by_key[('olmo', 'Correction')]['auc']:.3f} | "
+            f"{by_key[('olmo32', 'Correction')]['auc']:.3f} | "
+            f"{by_key[('olmo', 'Override')]['auc']:.3f} | "
+            f"{by_key[('olmo32', 'Override')]['auc']:.3f} |"
+        )
+
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def write_rq3_outputs(output_dir: Path, rq1_examples: Path, rq2_examples: Path) -> None:
     rq3_dir = output_dir / "rq3"
     rq3_dir.mkdir(parents=True, exist_ok=True)
@@ -223,6 +246,9 @@ def write_rq3_outputs(output_dir: Path, rq1_examples: Path, rq2_examples: Path) 
 
     write_csv(rq3_dir / "table3_olmo_vs_olmo32_signal_auc.csv", rows)
     write_table_md(rq3_dir / "table3_olmo_vs_olmo32_signal_auc.md", rows, "macro")
+    write_by_model_table_md(
+        rq3_dir / "table3_olmo_vs_olmo32_signal_auc_by_model.md", rows
+    )
     write_table_md(
         rq3_dir / "table3_olmo_vs_olmo32_signal_auc_pooled.md", rows, "pooled"
     )
@@ -270,7 +296,7 @@ def write_combined_summary(output_dir: Path) -> None:
     rq1_rows = read_model_summary(output_dir / "rq1" / "rq1_summary.json", "rcr")
     rq2_rows = read_model_summary(output_dir / "rq2" / "rq2_summary.json", "ror")
     rq3_table = (
-        output_dir / "rq3" / "table3_olmo_vs_olmo32_signal_auc.md"
+        output_dir / "rq3" / "table3_olmo_vs_olmo32_signal_auc_by_model.md"
     ).read_text(encoding="utf-8").strip()
 
     lines = [

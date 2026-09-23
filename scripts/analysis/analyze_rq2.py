@@ -2,8 +2,7 @@
 """Analyze RQ2: Does pretraining evidence protect against contradictory retrieval?
 
 The analysis uses existing generations:
-  - scripts/inference/closed_book/results/run_*_{model}_simple.json
-  - scripts/inference/contradictory_context/results/run_*_{model}_simple.json
+  - scripts/inference/results.json
 
 It filters to closed-book successes and measures whether contradictory evidence
 overrides the answer.
@@ -15,7 +14,6 @@ import argparse
 import csv
 import json
 import math
-import re
 from collections import defaultdict
 from pathlib import Path
 from statistics import mean
@@ -23,12 +21,10 @@ from statistics import mean
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET = REPO_ROOT / "data" / "dataset.json"
-DEFAULT_CLOSED_BOOK_DIR = REPO_ROOT / "scripts" / "inference" / "closed_book" / "results"
-DEFAULT_CONTRADICTORY_DIR = REPO_ROOT / "scripts" / "inference" / "contradictory_context" / "results"
+DEFAULT_QA_RESULTS = REPO_ROOT / "scripts" / "inference" / "results.json"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "scripts" / "analysis" / "outputs" / "rq2"
 DEFAULT_MODELS = ("amber", "redpajama", "olmo")
 QUESTION_TYPE = "simple"
-RUN_RE = re.compile(r"run_(\d+)_(.+)_(.+)\.json$")
 
 TRUE_OBJECT = "TRUE_OBJECT"
 FALSE_CONTEXT_OBJECT = "FALSE_CONTEXT_OBJECT"
@@ -41,10 +37,7 @@ def parse_args() -> argparse.Namespace:
         description="Compute RQ2 contradictory-retrieval override rates against RAS."
     )
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
-    parser.add_argument("--closed-book-dir", type=Path, default=DEFAULT_CLOSED_BOOK_DIR)
-    parser.add_argument(
-        "--contradictory-dir", type=Path, default=DEFAULT_CONTRADICTORY_DIR
-    )
+    parser.add_argument("--qa-results", type=Path, default=DEFAULT_QA_RESULTS)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument(
         "--models",
@@ -71,18 +64,6 @@ def dataset_key_for_model(model: str) -> str:
     return "olmo" if model == "olmo32" else model
 
 
-def result_files(results_dir: Path, model: str, q_type: str) -> dict[int, Path]:
-    files = {}
-    for path in sorted(results_dir.glob(f"run_*_{model}_{q_type}.json")):
-        match = RUN_RE.fullmatch(path.name)
-        if not match:
-            continue
-        run_id, parsed_model, parsed_q_type = match.groups()
-        if parsed_model == model and parsed_q_type == q_type:
-            files[int(run_id)] = path
-    return files
-
-
 def is_true(value) -> bool:
     return value is True or str(value).strip().lower() == "true"
 
@@ -99,6 +80,9 @@ def normalize_label(value) -> str:
 
 def collect_examples(args: argparse.Namespace) -> list[dict]:
     dataset = load_json(args.dataset)
+    qa_results = load_json(args.qa_results)
+    closed_book = qa_results["closed-book"]
+    contradictory = qa_results["contradictory_context"]
     rows = []
 
     for model in args.models:
@@ -106,58 +90,49 @@ def collect_examples(args: argparse.Namespace) -> list[dict]:
         if ds_model not in dataset:
             raise KeyError(f"Missing dataset section for model {model!r}: {ds_model!r}")
 
-        cb_files = result_files(args.closed_book_dir, model, args.q_type)
-        neg_files = result_files(args.contradictory_dir, model, args.q_type)
-        shared_runs = sorted(set(cb_files) & set(neg_files))
-
-        if not shared_runs:
-            print(f"[warn] no paired runs for {model}")
+        shared_qids = sorted(set(closed_book) & set(contradictory))
+        if not shared_qids:
+            print(f"[warn] no paired QA results for {model}")
             continue
 
-        for run_id in shared_runs:
-            closed_book = load_json(cb_files[run_id])
-            contradictory = load_json(neg_files[run_id])
-            shared_qids = sorted(set(closed_book) & set(contradictory))
+        for qid in shared_qids:
+            if model not in closed_book[qid] or model not in contradictory[qid]:
+                continue
 
-            for qid in shared_qids:
-                cb_item = closed_book[qid]
-                if not is_true(cb_item.get("is_correct")):
-                    continue
+            cb_item = closed_book[qid][model]
+            if not is_true(cb_item.get("is_correct")):
+                continue
 
-                neg_wrapper = contradictory[qid]
-                if model not in neg_wrapper:
-                    raise KeyError(f"Missing {model!r} in {neg_files[run_id]}:{qid}")
-                neg_item = neg_wrapper[model]
+            neg_item = contradictory[qid][model]
+            label = normalize_label(neg_item.get("is_correct"))
+            fact = dataset[ds_model][qid]
+            confidence = cb_item.get("confidence", {})
 
-                label = normalize_label(neg_item.get("is_correct"))
-                fact = dataset[ds_model][qid]
-                confidence = cb_item.get("confidence", {})
-
-                rows.append(
-                    {
-                        "model": model,
-                        "run_id": run_id,
-                        "qid": qid,
-                        "subject": fact.get("sub", ""),
-                        "relation": fact.get("rel", ""),
-                        "object": fact.get("obj", ""),
-                        "false_object": fact.get("false_obj", ""),
-                        "ras": int(fact.get("relation_support", 0)),
-                        "lexical_so": int(fact.get("lexical_so", 0)),
-                        "lexical_sro": int(fact.get("lexical_sro", 0)),
-                        "negative_label": label,
-                        "resistance": int(label == TRUE_OBJECT),
-                        "override": int(label == FALSE_CONTEXT_OBJECT),
-                        "other_degradation": int(label == OTHER),
-                        "ror": int(label == FALSE_CONTEXT_OBJECT),
-                        "token_logprob": confidence.get("token_logprob", ""),
-                        "verbalized_confidence": confidence.get(
-                            "verbalized_confidence", ""
-                        ),
-                        "p_true": confidence.get("p_true", ""),
-                        "self_consistency": confidence.get("self_consistency", ""),
-                    }
-                )
+            rows.append(
+                {
+                    "model": model,
+                    "run_id": "majority",
+                    "qid": qid,
+                    "subject": fact.get("sub", ""),
+                    "relation": fact.get("rel", ""),
+                    "object": fact.get("obj", ""),
+                    "false_object": fact.get("false_obj", ""),
+                    "ras": int(fact.get("relation_support", 0)),
+                    "lexical_so": int(fact.get("lexical_so", 0)),
+                    "lexical_sro": int(fact.get("lexical_sro", 0)),
+                    "negative_label": label,
+                    "resistance": int(label == TRUE_OBJECT),
+                    "override": int(label == FALSE_CONTEXT_OBJECT),
+                    "other_degradation": int(label == OTHER),
+                    "ror": int(label == FALSE_CONTEXT_OBJECT),
+                    "token_logprob": confidence.get("token_logprob", ""),
+                    "verbalized_confidence": confidence.get(
+                        "verbalized_confidence", ""
+                    ),
+                    "p_true": confidence.get("p_true", ""),
+                    "self_consistency": confidence.get("self_consistency", ""),
+                }
+            )
 
     return rows
 

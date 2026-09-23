@@ -34,14 +34,14 @@ Override rates dropped from the lowest-RAS group to the highest-RAS group by
 ## Run
 
 ```powershell
+python scripts\inference\select_majority_results.py
 python scripts\analysis\analyze_rq2.py
 ```
 
 ## Inputs
 
 - `data/dataset.json`
-- `scripts/inference/closed_book/results/run_*_{model}_simple.json`
-- `scripts/inference/contradictory_context/results/run_*_{model}_simple.json`
+- `scripts/inference/results.json`
 
 ## Outputs
 

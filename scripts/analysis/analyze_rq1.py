@@ -2,8 +2,7 @@
 """Analyze RQ1: Does pretraining evidence determine corrective retrieval?
 
 The analysis uses existing generations:
-  - scripts/inference/closed_book/results/run_*_{model}_simple.json
-  - scripts/inference/correct_context/results/run_*_{model}_simple.json
+  - scripts/inference/results.json
 
 It filters to closed-book failures and measures whether adding the correct
 passage corrected the answer.
@@ -15,7 +14,6 @@ import argparse
 import csv
 import json
 import math
-import re
 from collections import defaultdict
 from pathlib import Path
 from statistics import mean
@@ -23,12 +21,10 @@ from statistics import mean
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET = REPO_ROOT / "data" / "dataset.json"
-DEFAULT_CLOSED_BOOK_DIR = REPO_ROOT / "scripts" / "inference" / "closed_book" / "results"
-DEFAULT_CORRECT_CONTEXT_DIR = REPO_ROOT / "scripts" / "inference" / "correct_context" / "results"
+DEFAULT_QA_RESULTS = REPO_ROOT / "scripts" / "inference" / "results.json"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "scripts" / "analysis" / "outputs" / "rq1"
 DEFAULT_MODELS = ("amber", "redpajama", "olmo")
 QUESTION_TYPE = "simple"
-RUN_RE = re.compile(r"run_(\d+)_(.+)_(.+)\.json$")
 
 
 def parse_args() -> argparse.Namespace:
@@ -36,10 +32,7 @@ def parse_args() -> argparse.Namespace:
         description="Compute RQ1 corrective retrieval rates against RAS."
     )
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
-    parser.add_argument("--closed-book-dir", type=Path, default=DEFAULT_CLOSED_BOOK_DIR)
-    parser.add_argument(
-        "--correct-context-dir", type=Path, default=DEFAULT_CORRECT_CONTEXT_DIR
-    )
+    parser.add_argument("--qa-results", type=Path, default=DEFAULT_QA_RESULTS)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument(
         "--models",
@@ -66,24 +59,15 @@ def dataset_key_for_model(model: str) -> str:
     return "olmo" if model == "olmo32" else model
 
 
-def result_files(results_dir: Path, model: str, q_type: str) -> dict[int, Path]:
-    files = {}
-    for path in sorted(results_dir.glob(f"run_*_{model}_{q_type}.json")):
-        match = RUN_RE.fullmatch(path.name)
-        if not match:
-            continue
-        run_id, parsed_model, parsed_q_type = match.groups()
-        if parsed_model == model and parsed_q_type == q_type:
-            files[int(run_id)] = path
-    return files
-
-
 def is_true(value) -> bool:
     return value is True or str(value).strip().lower() == "true"
 
 
 def collect_examples(args: argparse.Namespace) -> list[dict]:
     dataset = load_json(args.dataset)
+    qa_results = load_json(args.qa_results)
+    closed_book = qa_results["closed-book"]
+    correct_context = qa_results["correct_context"]
     rows = []
 
     for model in args.models:
@@ -91,56 +75,47 @@ def collect_examples(args: argparse.Namespace) -> list[dict]:
         if ds_model not in dataset:
             raise KeyError(f"Missing dataset section for model {model!r}: {ds_model!r}")
 
-        cb_files = result_files(args.closed_book_dir, model, args.q_type)
-        cc_files = result_files(args.correct_context_dir, model, args.q_type)
-        shared_runs = sorted(set(cb_files) & set(cc_files))
-
-        if not shared_runs:
-            print(f"[warn] no paired runs for {model}")
+        shared_qids = sorted(set(closed_book) & set(correct_context))
+        if not shared_qids:
+            print(f"[warn] no paired QA results for {model}")
             continue
 
-        for run_id in shared_runs:
-            closed_book = load_json(cb_files[run_id])
-            correct_context = load_json(cc_files[run_id])
-            shared_qids = sorted(set(closed_book) & set(correct_context))
+        for qid in shared_qids:
+            if model not in closed_book[qid] or model not in correct_context[qid]:
+                continue
 
-            for qid in shared_qids:
-                cb_item = closed_book[qid]
-                cc_wrapper = correct_context[qid]
-                if model not in cc_wrapper:
-                    raise KeyError(f"Missing {model!r} in {cc_files[run_id]}:{qid}")
-                cc_item = cc_wrapper[model]
+            cb_item = closed_book[qid][model]
+            cc_item = correct_context[qid][model]
+            cb_correct = is_true(cb_item.get("is_correct"))
+            if cb_correct:
+                continue
 
-                cb_correct = is_true(cb_item.get("is_correct"))
-                if cb_correct:
-                    continue
+            fact = dataset[ds_model][qid]
+            cc_correct = is_true(cc_item.get("is_correct"))
+            confidence = cb_item.get("confidence", {})
 
-                fact = dataset[ds_model][qid]
-                cc_correct = is_true(cc_item.get("is_correct"))
-                confidence = cb_item.get("confidence", {})
-
-                rows.append(
-                    {
-                        "model": model,
-                        "run_id": run_id,
-                        "qid": qid,
-                        "subject": fact.get("sub", ""),
-                        "relation": fact.get("rel", ""),
-                        "object": fact.get("obj", ""),
-                        "ras": int(fact.get("relation_support", 0)),
-                        "lexical_so": int(fact.get("lexical_so", 0)),
-                        "lexical_sro": int(fact.get("lexical_sro", 0)),
-                        "closed_book_correct": int(cb_correct),
-                        "correct_context_correct": int(cc_correct),
-                        "rcr": int(cc_correct),
-                        "token_logprob": confidence.get("token_logprob", ""),
-                        "verbalized_confidence": confidence.get(
-                            "verbalized_confidence", ""
-                        ),
-                        "p_true": confidence.get("p_true", ""),
-                        "self_consistency": confidence.get("self_consistency", ""),
-                    }
-                )
+            rows.append(
+                {
+                    "model": model,
+                    "run_id": "majority",
+                    "qid": qid,
+                    "subject": fact.get("sub", ""),
+                    "relation": fact.get("rel", ""),
+                    "object": fact.get("obj", ""),
+                    "ras": int(fact.get("relation_support", 0)),
+                    "lexical_so": int(fact.get("lexical_so", 0)),
+                    "lexical_sro": int(fact.get("lexical_sro", 0)),
+                    "closed_book_correct": int(cb_correct),
+                    "correct_context_correct": int(cc_correct),
+                    "rcr": int(cc_correct),
+                    "token_logprob": confidence.get("token_logprob", ""),
+                    "verbalized_confidence": confidence.get(
+                        "verbalized_confidence", ""
+                    ),
+                    "p_true": confidence.get("p_true", ""),
+                    "self_consistency": confidence.get("self_consistency", ""),
+                }
+            )
 
     return rows
 

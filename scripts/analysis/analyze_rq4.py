@@ -26,6 +26,9 @@ MODELS = ("olmo", "olmo32")
 SIGNALS = {
     "Lex-SO": ("lexical_so",),
     "Lex-SRO": ("lexical_sro",),
+    "Token logprob": ("token_logprob",),
+    "Verbalized confidence": ("verbalized_confidence",),
+    "P(true)": ("p_true",),
     "Self-consistency": ("self_consistency",),
     "Relation-Aware Support": ("ras",),
 }
@@ -73,7 +76,15 @@ def read_rows(path: Path, outcome_col: str) -> list[dict]:
                 "qid": row["qid"],
                 "outcome": int(row[outcome_col]),
             }
-            for col in ("lexical_so", "lexical_sro", "ras", "self_consistency"):
+            for col in (
+                "lexical_so",
+                "lexical_sro",
+                "ras",
+                "token_logprob",
+                "verbalized_confidence",
+                "p_true",
+                "self_consistency",
+            ):
                 item[col] = parse_float(row.get(col, ""))
             rows.append(item)
     return rows
@@ -219,7 +230,12 @@ def write_rq3_outputs(output_dir: Path, rq1_examples: Path, rq2_examples: Path) 
         json.dumps(
             {
                 "models": list(MODELS),
-                "confidence_signal": "self_consistency",
+                "confidence_signals": [
+                    "token_logprob",
+                    "verbalized_confidence",
+                    "p_true",
+                    "self_consistency",
+                ],
                 "metric": "direction-adjusted rank AUROC",
                 "section_5_4": "excluded",
                 "results": rows,

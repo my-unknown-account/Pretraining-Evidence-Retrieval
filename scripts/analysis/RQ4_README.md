@@ -23,16 +23,15 @@ both OLMo models share the same corpus-derived evidence measurements.
 ## Run
 
 ```powershell
+python scripts\inference\select_majority_results.py
 python scripts\analysis\analyze_rq4.py
 ```
 
 ## Inputs
 
-RQ4 reuses the same inference result directories as RQ1 and RQ2:
+RQ4 reuses the same majority-selected inference file as RQ1 and RQ2:
 
-- `scripts/inference/closed_book/results/`
-- `scripts/inference/correct_context/results/`
-- `scripts/inference/contradictory_context/results/`
+- `scripts/inference/results.json`
 
 ## Outputs
 

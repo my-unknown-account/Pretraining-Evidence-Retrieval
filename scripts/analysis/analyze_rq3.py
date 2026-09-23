@@ -22,6 +22,9 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "scripts" / "analysis" / "outputs" / "rq3"
 SIGNALS = {
     "Lex-SO": ("lexical_so",),
     "Lex-SRO": ("lexical_sro",),
+    "Token logprob": ("token_logprob",),
+    "Verbalized confidence": ("verbalized_confidence",),
+    "P(true)": ("p_true",),
     "Self-consistency": ("self_consistency",),
     "Relation-Aware Support": ("ras",),
 }
@@ -29,7 +32,7 @@ SIGNALS = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build Table 3 for RQ3 using self-consistency as confidence."
+        description="Build Table 3 for RQ3 using closed-book confidence signals."
     )
     parser.add_argument("--rq1-examples", type=Path, default=DEFAULT_RQ1_EXAMPLES)
     parser.add_argument("--rq2-examples", type=Path, default=DEFAULT_RQ2_EXAMPLES)
@@ -53,7 +56,15 @@ def read_rows(path: Path, outcome_col: str) -> list[dict]:
                 "qid": row["qid"],
                 "outcome": int(row[outcome_col]),
             }
-            for col in ("lexical_so", "lexical_sro", "ras", "self_consistency"):
+            for col in (
+                "lexical_so",
+                "lexical_sro",
+                "ras",
+                "token_logprob",
+                "verbalized_confidence",
+                "p_true",
+                "self_consistency",
+            ):
                 item[col] = parse_float(row.get(col, ""))
             rows.append(item)
     return rows
@@ -235,7 +246,7 @@ def write_summary(path: Path, rows: list[dict]) -> None:
     lines = [
         "# RQ3 Summary",
         "",
-        "Confidence signal: closed-book `self_consistency`.",
+        "Confidence signals: closed-book `token_logprob`, `verbalized_confidence`, `p_true`, and `self_consistency`.",
         "Main metric: direction-adjusted rank AUROC; values above 0.5 mean the signal separates the outcome classes.",
         "Main table reports macro-average AUROC across models.",
         "",
@@ -278,7 +289,12 @@ def main() -> None:
     (args.output_dir / "rq3_summary.json").write_text(
         json.dumps(
             {
-                "confidence_signal": "self_consistency",
+                "confidence_signals": [
+                    "token_logprob",
+                    "verbalized_confidence",
+                    "p_true",
+                    "self_consistency",
+                ],
                 "metric": "direction-adjusted rank AUROC",
                 "results": results,
             },

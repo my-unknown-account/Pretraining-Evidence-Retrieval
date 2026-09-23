@@ -6,6 +6,9 @@ Signals:
 
 - `Lex-SO`: subject-object lexical co-occurrence.
 - `Lex-SRO`: subject-relation-object lexical co-occurrence.
+- `Token logprob`: closed-book confidence signal.
+- `Verbalized confidence`: closed-book confidence signal.
+- `P(true)`: closed-book confidence signal.
 - `Self-consistency`: closed-book confidence signal.
 - `Relation-Aware Support`: semantic support, `RAS`.
 
@@ -13,14 +16,18 @@ The metric is direction-adjusted rank AUROC for predicting correction and contra
 
 ## Paper Result
 
-`RAS` was the strongest individual signal for both behaviors:
+The signals separated outcomes modestly, with no single signal dominating both
+behaviors:
 
 | Signal | Correction macro AUROC | Override macro AUROC |
 | --- | ---: | ---: |
-| Lex-SO | 0.572 | 0.572 |
-| Lex-SRO | 0.573 | 0.546 |
-| Self-consistency | 0.562 | 0.527 |
-| RAS | 0.607 | 0.593 |
+| Lex-SO | 0.583 | 0.581 |
+| Lex-SRO | 0.572 | 0.548 |
+| Token logprob | 0.563 | 0.535 |
+| Verbalized confidence | 0.522 | 0.512 |
+| P(true) | 0.541 | 0.547 |
+| Self-consistency | 0.571 | 0.506 |
+| RAS | 0.568 | 0.582 |
 
 The effect is meaningful but not deterministic: no single signal fully predicts
 whether a model follows retrieved evidence on a specific generation trial.

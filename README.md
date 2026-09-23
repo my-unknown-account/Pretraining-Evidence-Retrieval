@@ -50,6 +50,9 @@ and behavior-derived confidence.
 | `Lex-SO` | 🔤 Count of passages where subject and object aliases co-occur |
 | `Lex-SRO` | 🔤 Count of passages where subject, relation wording, and object aliases co-occur |
 | `RAS` | 📌 Count of passages that semantically support the full subject-relation-object fact |
+| `Token logprob` | 🧮 Closed-book token-probability confidence |
+| `Verbalized confidence` | 🗣️ Closed-book self-reported confidence |
+| `P(true)` | ✅ Closed-book truth-probability confidence |
 | `Self-consistency` | 🔁 Agreement across repeated closed-book generations |
 
 `RAS` is intentionally stricter than lexical matching: a passage contributes
@@ -62,20 +65,20 @@ only when it clearly states or implies the complete factual proposition.
 | ✅ Correct retrieval repairs many errors | RCR: Amber `0.749`, OLMo `0.888`, RedPajama `0.818` |
 | ⚠️ Contradictory retrieval often overrides correct answers | ROR: Amber `0.522`, OLMo `0.749`, RedPajama `0.603` |
 | 🛡️ Stronger RAS reduces override risk | Highest-RAS facts are less likely to adopt the planted false object |
-| 📌 RAS is the strongest individual signal | Best macro AUROC for both correction and override |
+| 📊 No single signal dominates all outcomes | RAS and confidence signals provide complementary predictive signal |
 | 📈 Larger OLMo is more resistant | OLMo-32B lowers ROR from `0.749` to `0.621` with shared corpus evidence |
 
 ## 🧪 Experimental Scale
 
-| Model | Facts | Closed-book trials | RQ1 eligible wrong | RQ2 eligible correct |
+| Model | Facts | Closed-book QA records | RQ1 eligible wrong | RQ2 eligible correct |
 | --- | ---: | ---: | ---: | ---: |
-| Amber | 12,739 | 127,390 | 109,399 | 17,991 |
-| RedPajama | 12,309 | 123,090 | 96,360 | 26,730 |
-| OLMo | 12,788 | 127,880 | 110,462 | 17,418 |
-| OLMo-32B | 12,788 | 127,880 | 95,733 | 32,147 |
+| Amber | 12,739 | 12,846 | 11,077 | 1,662 |
+| RedPajama | 12,309 | 12,516 | 9,942 | 2,367 |
+| OLMo | 12,788 | 12,934 | 11,255 | 1,533 |
+| OLMo-32B | 12,788 | 12,934 | 9,773 | 3,015 |
 
 Each fact is evaluated across 10 stochastic generation runs per model and
-condition.
+condition, then collapsed to one majority-selected QA record before analysis.
 
 ## 🗂️ Repository Map
 
@@ -169,7 +172,18 @@ python scripts/inference/contradictory_context/compute_accuracy.py --model amber
 
 Repeat for each model.
 
-### 5. 📊 Run Analyses
+### 5. 🧮 Select Majority QA Records
+
+Collapse the 10 sampled generations into one QA file by majority `is_correct`
+label per fact/model/condition:
+
+```bash
+python scripts/inference/select_majority_results.py
+```
+
+This writes `scripts/inference/results.json`.
+
+### 6. 📊 Run Analyses
 
 RQ3 depends on outputs from RQ1 and RQ2.
 
@@ -180,17 +194,11 @@ python scripts/analysis/analyze_rq3.py
 python scripts/analysis/analyze_rq4.py
 ```
 
-Optional paper-material summaries:
-
-```bash
-python scripts/analysis/generate_materials.py
-```
-
 ## 📦 Output Locations
 
 | Output type | Default location |
 | --- | --- |
-| 🤖 Model generations and labels | `scripts/inference/*/results/` |
+| 🤖 Model generations and labels | `scripts/inference/*/results/` and `scripts/inference/results.json` |
 | 📊 RQ analysis outputs | `scripts/analysis/outputs/` |
 | 📝 New annotation workbooks | `human_evaluation/*/workbooks/` |
 | ✅ Filled human-evaluation workbooks | `human_evaluation/*/results/` |

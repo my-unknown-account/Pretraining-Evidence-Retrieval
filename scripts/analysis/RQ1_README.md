@@ -31,14 +31,14 @@ and 9.9 for RedPajama.
 ## Run
 
 ```powershell
+python scripts\inference\select_majority_results.py
 python scripts\analysis\analyze_rq1.py
 ```
 
 ## Inputs
 
 - `data/dataset.json`
-- `scripts/inference/closed_book/results/run_*_{model}_simple.json`
-- `scripts/inference/correct_context/results/run_*_{model}_simple.json`
+- `scripts/inference/results.json`
 
 ## Outputs
 
